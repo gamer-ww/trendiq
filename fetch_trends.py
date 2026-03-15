@@ -211,6 +211,15 @@ def main():
         })
 
     analysis = analyze_with_gemini(all_raw_data)
+    
+    if not analysis.get('topics'):
+    analysis = {
+        "topics": all_raw_data[:5],
+        "recommendations": [{"title": "API limit hit hui, kal retry hoga", "score": 50, "reason": "Gemini quota limit", "platform": "both"}],
+        "trending_audios": [],
+        "stats": {"total_topics": len(all_raw_data), "verified_count": 0, "total_views": "N/A", "top_category": "Mixed"}
+    }
+
     save_to_supabase(analysis)
 
     print("\n" + "=" * 50)
