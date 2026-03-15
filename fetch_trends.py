@@ -98,7 +98,7 @@ def fetch_instagram(hashtag):
 # ── 5. Gemini AI se analysis ──
 def analyze_with_gemini(all_data):
     print("Gemini AI analysis ho rahi hai...")
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel('gemini-2.0-flash')
 
     prompt = f"""
 You are an AI content strategy assistant for Indian YouTube & Instagram creators.
