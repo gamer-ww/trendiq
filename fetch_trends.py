@@ -86,7 +86,7 @@ def fetch_instagram(hashtag):
 def analyze_with_gemini(all_data):
     print("Gemini AI analysis ho rahi hai...")
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash-latest')
+        model = genai.GenerativeModel('gemini-2.0-flash-lite')
         prompt = f"""
 You are an AI content strategy assistant for Indian YouTube creators.
 Here is trending data from India: {json.dumps(all_data[:5], ensure_ascii=False)}
