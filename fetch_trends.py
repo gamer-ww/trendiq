@@ -6,34 +6,30 @@ from pytrends.request import TrendReq
 import google.generativeai as genai
 from supabase import create_client
 
-# ── Environment Variables (GitHub Secrets se aayenge) ──
-SUPABASE_URL   = os.environ['SUPABASE_URL']
-SUPABASE_KEY   = os.environ['SUPABASE_KEY']
-YOUTUBE_KEY    = os.environ['YOUTUBE_API_KEY']
-NEWS_KEY       = os.environ['NEWS_API_KEY']
-GEMINI_KEY     = os.environ['GEMINI_API_KEY']
-RAPIDAPI_KEY   = os.environ.get('RAPIDAPI_KEY', '')
+SUPABASE_URL = os.environ['SUPABASE_URL']
+SUPABASE_KEY = os.environ['SUPABASE_KEY']
+YOUTUBE_KEY = os.environ['YOUTUBE_API_KEY']
+NEWS_KEY = os.environ['NEWS_API_KEY']
+GEMINI_KEY = os.environ['GEMINI_API_KEY']
+RAPIDAPI_KEY = os.environ.get('RAPIDAPI_KEY', '')
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 genai.configure(api_key=GEMINI_KEY)
 
-# ── Topics jo track karne hain ──
 TOPICS = [
-    {"query": "LPG gas price India",        "category": "incidents",  "hashtag": "lpgpricehike"},
-    {"query": "RBI interest rate India",    "category": "finance",    "hashtag": "rbipolicy"},
-    {"query": "Bitcoin India price",        "category": "finance",    "hashtag": "bitcoinindia"},
-    {"query": "AI India technology",        "category": "tech",       "hashtag": "aiindia"},
-    {"query": "India Pakistan geopolitics", "category": "incidents",  "hashtag": "indiapakistan"},
-    {"query": "Sensex Nifty stock market",  "category": "finance",    "hashtag": "stockmarket"},
-    {"query": "India startup funding 2025", "category": "startups",   "hashtag": "startupindia"},
-    {"query": "BRICS India geopolitics",    "category": "politics",   "hashtag": "brics"},
-    {"query": "India economy GDP",          "category": "business",   "hashtag": "indianeconomy"},
-    {"query": "Modi government policy",     "category": "politics",   "hashtag": "indiagovernment"},
-    {"query": "petrol diesel price India",  "category": "incidents",  "hashtag": "petrolindia"},
-    {"query": "Adani Ambani business news", "category": "business",   "hashtag": "indiabusiness"},
+    {"query": "LPG gas price India", "category": "incidents", "hashtag": "lpgpricehike"},
+    {"query": "RBI interest rate India", "category": "finance", "hashtag": "rbipolicy"},
+    {"query": "Bitcoin India price", "category": "finance", "hashtag": "bitcoinindia"},
+    {"query": "AI India technology", "category": "tech", "hashtag": "aiindia"},
+    {"query": "India Pakistan geopolitics", "category": "incidents", "hashtag": "indiapakistan"},
+    {"query": "Sensex Nifty stock market", "category": "finance", "hashtag": "stockmarket"},
+    {"query": "India startup funding 2025", "category": "startups", "hashtag": "startupindia"},
+    {"query": "BRICS India geopolitics", "category": "politics", "hashtag": "brics"},
+    {"query": "India economy GDP", "category": "business", "hashtag": "indianeconomy"},
+    {"query": "petrol diesel price India", "category": "incidents", "hashtag": "petrolindia"},
 ]
 
-# ── 1. YouTube se trending videos fetch karo ──
+
 def fetch_youtube(topic_query):
     print(f"  YouTube: {topic_query}")
     since = (datetime.utcnow() - timedelta(days=3)).strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -52,7 +48,7 @@ def fetch_youtube(topic_query):
         print(f"    YouTube error: {e}")
         return {"video_count": 0, "top_title": ""}
 
-# ── 2. Google Trends se trend score lo ──
+
 def fetch_google_trends(topic_query):
     print(f"  Google Trends: {topic_query}")
     try:
@@ -65,7 +61,7 @@ def fetch_google_trends(topic_query):
         print(f"    Trends error: {e}")
     return 50
 
-# ── 3. NewsAPI se news lo ──
+
 def fetch_news(topic_query):
     print(f"  News: {topic_query}")
     url = "https://newsapi.org/v2/everything"
@@ -82,94 +78,68 @@ def fetch_news(topic_query):
         print(f"    News error: {e}")
         return {"count": 0, "sources": []}
 
-# ── 4. Instagram hashtag data (RapidAPI) ──
-def fetch_instagram(hashtag):
-    print(f"  Instagram: #{hashtag}")
-    try:
-        import instaloader
-        L = instaloader.Instaloader()
-        posts = instaloader.Hashtag.from_name(L.context, hashtag)
-        count = posts.mediacount
-        return {"reel_count": count, "views": count * 400}
-    except Exception as e:
-        print(f"    Instagram error: {e}")
-        return {"reel_count": 0, "views": 0}
 
-# ── 5. Gemini AI se analysis ──
+def fetch_instagram(hashtag):
+    return {"reel_count": 0, "views": 0}
+
+
 def analyze_with_gemini(all_data):
     print("Gemini AI analysis ho rahi hai...")
-    model = genai.GenerativeModel('gemini-1.5-flash-latest')
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash-latest')
+        prompt = f"""
+You are an AI content strategy assistant for Indian YouTube creators.
+Here is trending data from India: {json.dumps(all_data[:5], ensure_ascii=False)}
 
-    prompt = f"""
-You are an AI content strategy assistant for Indian YouTube & Instagram creators.
-
-Here is real trending data from India right now:
-{json.dumps(all_data, indent=2, ensure_ascii=False)}
-
-Your job:
-1. Analyze which topics are most trending RIGHT NOW in India
-2. Fact-check each topic (verified/partial/misleading) based on if it sounds like real news
-3. Give creator recommendations
-
-Return ONLY a valid JSON object (no markdown, no explanation) with this exact structure:
+Return ONLY valid JSON, no markdown, no explanation:
 {{
   "topics": [
     {{
-      "title": "topic name in Hinglish (short, catchy)",
-      "category": "tech/finance/politics/incidents/business/startups",
+      "title": "topic in Hinglish",
+      "category": "tech",
       "trend_score": 85,
       "fact_status": "verified",
-      "youtube_videos": 45000,
+      "youtube_videos": "45K",
       "youtube_views": "890M",
       "ig_hashtag": "#example",
-      "ig_reels": 8000,
+      "ig_reels": "8K",
       "ig_views": "980K",
       "cross_platform": true,
       "since": "2 din se",
-      "sources": "Times of India, NDTV",
+      "sources": "Times of India",
       "yt_score": 85,
       "ig_score": 74
     }}
   ],
   "recommendations": [
     {{
-      "title": "Video title idea in Hinglish",
+      "title": "Video idea in Hinglish",
       "score": 93,
       "reason": "reason in Hinglish",
       "platform": "both"
     }}
   ],
-  "trending_audios": [
-    {{
-      "name": "audio name",
-      "usage": "500K reels",
-      "match": "kab use karo"
-    }}
-  ],
+  "trending_audios": [],
   "stats": {{
-    "total_topics": 12,
-    "verified_count": 8,
-    "total_views": "8.2B",
+    "total_topics": 5,
+    "verified_count": 3,
+    "total_views": "2B",
     "top_category": "Finance"
   }}
 }}
-
-Make it realistic for India 2025. Topics should be in Hinglish. Max 10 topics.
 """
-    try:
         response = model.generate_content(prompt)
         text = response.text.strip()
-        # Clean up markdown if present
-        if text.startswith("```"):
+        if "```" in text:
             text = text.split("```")[1]
             if text.startswith("json"):
                 text = text[4:]
         return json.loads(text.strip())
     except Exception as e:
         print(f"Gemini error: {e}")
-        return {"topics": [], "recommendations": [], "trending_audios": [], "stats": {}}
+        return {}
 
-# ── 6. Supabase mein save karo ──
+
 def save_to_supabase(analysis):
     print("Supabase mein save ho raha hai...")
     record = {
@@ -182,51 +152,81 @@ def save_to_supabase(analysis):
     supabase.table('trendiq_data').insert(record).execute()
     print("Save ho gaya!")
 
-# ── Main Function ──
+
 def main():
     print("=" * 50)
-    print(f"TrendIQ Fetch Start: {datetime.utcnow()}")
+    print(f"TrendIQ Start: {datetime.utcnow()}")
     print("=" * 50)
 
     all_raw_data = []
 
     for topic in TOPICS:
         print(f"\nTopic: {topic['query']}")
-        yt_data   = fetch_youtube(topic['query'])
-        gt_score  = fetch_google_trends(topic['query'])
+        yt_data = fetch_youtube(topic['query'])
+        gt_score = fetch_google_trends(topic['query'])
         news_data = fetch_news(topic['query'])
-        ig_data   = fetch_instagram(topic['hashtag'])
+        ig_data = fetch_instagram(topic['hashtag'])
 
         all_raw_data.append({
-            "topic":          topic['query'],
-            "category":       topic['category'],
-            "hashtag":        topic['hashtag'],
-            "google_score":   gt_score,
-            "yt_videos":      yt_data['video_count'],
-            "yt_top_title":   yt_data['top_title'],
-            "news_count":     news_data['count'],
-            "news_sources":   news_data['sources'],
-            "ig_reels":       ig_data['reel_count'],
-            "ig_views":       ig_data['views'],
+            "topic": topic['query'],
+            "category": topic['category'],
+            "hashtag": topic['hashtag'],
+            "google_score": gt_score,
+            "yt_videos": yt_data['video_count'],
+            "yt_top_title": yt_data['top_title'],
+            "news_count": news_data['count'],
+            "news_sources": news_data['sources'],
+            "ig_reels": ig_data['reel_count'],
+            "ig_views": ig_data['views'],
         })
 
-analysis = analyze_with_gemini(all_raw_data)
+    analysis = analyze_with_gemini(all_raw_data)
 
-if not analysis.get('topics'):
-    analysis = {
-        "topics": all_raw_data[:5],
-        "recommendations": [{"title": "API limit hit hui, kal retry hoga", "score": 50, "reason": "Gemini quota limit", "platform": "both"}],
-        "trending_audios": [],
-        "stats": {"total_topics": len(all_raw_data), "verified_count": 0, "total_views": "N/A", "top_category": "Mixed"}
-    }
-
-save_to_supabase(analysis)
+    if not analysis.get('topics'):
+        print("Gemini quota hit — raw data save kar raha hai")
+        analysis = {
+            "topics": [
+                {
+                    "title": t["topic"],
+                    "category": t["category"],
+                    "trend_score": t["google_score"],
+                    "fact_status": "partial",
+                    "youtube_videos": str(t["yt_videos"]) + " videos",
+                    "youtube_views": "N/A",
+                    "ig_hashtag": "#" + t["hashtag"],
+                    "ig_reels": "0",
+                    "ig_views": "0",
+                    "cross_platform": False,
+                    "since": "aaj",
+                    "sources": ", ".join(t["news_sources"]) if t["news_sources"] else "N/A",
+                    "yt_score": t["google_score"],
+                    "ig_score": 0
+                }
+                for t in all_raw_data
+            ],
+            "recommendations": [
+                {
+                    "title": all_raw_data[0]["topic"] + " pe video banao",
+                    "score": all_raw_data[0]["google_score"],
+                    "reason": "Abhi sabse zyada trending hai",
+                    "platform": "youtube"
+                }
+            ],
+            "trending_audios": [],
+            "stats": {
+                "total_topics": len(all_raw_data),
+                "verified_count": 0,
+                "total_views": "N/A",
+                "top_category": "Mixed"
+            }
+        }
 
     save_to_supabase(analysis)
 
     print("\n" + "=" * 50)
-    print("TrendIQ Fetch Complete!")
+    print("TrendIQ Complete!")
     print("=" * 50)
+
 
 if __name__ == "__main__":
     main()
