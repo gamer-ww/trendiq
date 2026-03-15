@@ -84,19 +84,13 @@ def fetch_news(topic_query):
 
 # ── 4. Instagram hashtag data (RapidAPI) ──
 def fetch_instagram(hashtag):
-    if not RAPIDAPI_KEY:
-        return {"reel_count": 0, "views": 0}
     print(f"  Instagram: #{hashtag}")
-    url = "https://instagram-scraper-api2.p.rapidapi.com/v1/hashtag"
-    headers = {
-        "X-RapidAPI-Key": RAPIDAPI_KEY,
-        "X-RapidAPI-Host": "instagram-scraper-api2.p.rapidapi.com"
-    }
     try:
-        r = requests.get(url, headers=headers, params={"hashtag": hashtag}, timeout=10)
-        data = r.json()
-        count = data.get('data', {}).get('media_count', 0)
-        return {"reel_count": count, "views": count * 450}
+        import instaloader
+        L = instaloader.Instaloader()
+        posts = instaloader.Hashtag.from_name(L.context, hashtag)
+        count = posts.mediacount
+        return {"reel_count": count, "views": count * 400}
     except Exception as e:
         print(f"    Instagram error: {e}")
         return {"reel_count": 0, "views": 0}
