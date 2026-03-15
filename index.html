@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TrendIQ — Creator Intelligence Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0a0f; --bg2: #13131a; --bg3: #1c1c26;
+    --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.15);
+    --text: #f0f0f5; --text2: #9090a8; --text3: #5a5a72;
+    --purple: #7c6ff7; --purple-bg: rgba(124,111,247,0.12);
+    --green: #4ade80; --green-bg: rgba(74,222,128,0.1);
+    --amber: #fbbf24; --amber-bg: rgba(251,191,36,0.1);
+    --red: #f87171; --red-bg: rgba(248,113,113,0.1);
+    --blue: #60a5fa; --blue-bg: rgba(96,165,250,0.1);
+  }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, 'Segoe UI', sans-serif; min-height: 100vh; }
+
+  /* Header */
+  .header { padding: 20px 20px 0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-text { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+  .logo-text span { color: var(--purple); }
+  .badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge-live { background: var(--green-bg); color: var(--green); border: 1px solid rgba(74,222,128,0.2); }
+  .badge-ig { background: var(--purple-bg); color: var(--purple); border: 1px solid rgba(124,111,247,0.2); }
+  .sync-info { font-size: 11px; color: var(--text3); }
+  .sync-time { color: var(--text2); font-weight: 500; }
+
+  /* Notif Bar */
+  .notif { margin: 16px 20px 0; padding: 12px 16px; background: var(--green-bg); border: 1px solid rgba(74,222,128,0.2); border-radius: 12px; display: flex; align-items: flex-start; gap: 10px; }
+  .notif-icon { font-size: 16px; margin-top: 1px; }
+  .notif-title { font-size: 13px; font-weight: 600; color: var(--green); margin-bottom: 2px; }
+  .notif-sub { font-size: 12px; color: var(--text2); }
+
+  /* Filters */
+  .filters { padding: 16px 20px 0; display: flex; gap: 6px; flex-wrap: wrap; }
+  .time-btn { padding: 6px 14px; font-size: 12px; font-weight: 500; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; background: transparent; color: var(--text2); transition: all 0.15s; }
+  .time-btn:hover { border-color: var(--border2); color: var(--text); }
+  .time-btn.active { background: var(--purple); color: #fff; border-color: var(--purple); }
+
+  .plat-filters { padding: 10px 20px 0; display: flex; gap: 6px; flex-wrap: wrap; }
+  .plat-btn { padding: 6px 16px; font-size: 12px; font-weight: 500; border: 1px solid var(--border); border-radius: 20px; cursor: pointer; background: transparent; color: var(--text2); transition: all 0.15s; }
+  .plat-btn.yt-active { background: var(--red-bg); color: var(--red); border-color: rgba(248,113,113,0.3); }
+  .plat-btn.ig-active { background: var(--purple-bg); color: var(--purple); border-color: rgba(124,111,247,0.3); }
+  .plat-btn.both-active { background: var(--green-bg); color: var(--green); border-color: rgba(74,222,128,0.3); }
+
+  /* Stats Row */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 16px 20px 0; }
+  .stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .stat-label { font-size: 11px; color: var(--text3); margin-bottom: 4px; }
+  .stat-val { font-size: 22px; font-weight: 700; color: var(--text); }
+
+  /* Cat Filters */
+  .cat-filters { padding: 14px 20px 0; display: flex; gap: 6px; flex-wrap: wrap; }
+  .cat-btn { padding: 4px 12px; font-size: 11px; border: 1px solid var(--border); border-radius: 20px; cursor: pointer; background: transparent; color: var(--text2); transition: all 0.15s; }
+  .cat-btn.active { border-color: var(--border2); color: var(--text); background: var(--bg3); }
+
+  /* Topic List */
+  .topic-list { padding: 14px 20px 0; }
+  .topic-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; margin-bottom: 8px; transition: border-color 0.15s; }
+  .topic-card:hover { border-color: var(--border2); }
+  .topic-top { display: flex; align-items: flex-start; gap: 12px; }
+  .rank { font-size: 18px; font-weight: 700; color: var(--text3); min-width: 30px; font-variant-numeric: tabular-nums; }
+  .rank.top3 { color: var(--purple); }
+  .topic-body { flex: 1; min-width: 0; }
+  .topic-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .topic-badges { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 8px; }
+  .chip { padding: 2px 9px; border-radius: 5px; font-size: 11px; font-weight: 500; }
+  .chip-cat-tech      { background: var(--blue-bg); color: var(--blue); }
+  .chip-cat-finance   { background: var(--green-bg); color: var(--green); }
+  .chip-cat-politics  { background: var(--amber-bg); color: var(--amber); }
+  .chip-cat-incidents { background: var(--red-bg); color: var(--red); }
+  .chip-cat-business  { background: rgba(20,184,166,0.1); color: #2dd4bf; }
+  .chip-cat-startups  { background: var(--purple-bg); color: var(--purple); }
+  .chip-verified   { background: var(--green-bg); color: var(--green); }
+  .chip-partial    { background: var(--amber-bg); color: var(--amber); }
+  .chip-misleading { background: var(--red-bg); color: var(--red); }
+  .chip-cross { background: var(--green-bg); color: var(--green); }
+  .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .bar-label { font-size: 10px; color: var(--text3); min-width: 58px; }
+  .bar-track { flex: 1; height: 4px; background: var(--bg3); border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+  .bar-score { font-size: 11px; color: var(--text2); min-width: 24px; font-variant-numeric: tabular-nums; }
+  .bar-meta { font-size: 10px; color: var(--text3); }
+  .topic-since { font-size: 10px; color: var(--text3); margin-top: 4px; }
+
+  /* Audio Section */
+  .section-head { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.6px; padding: 16px 20px 8px; }
+  .audio-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; margin: 0 20px 6px; display: flex; align-items: center; gap: 12px; }
+  .audio-rank { width: 28px; height: 28px; border-radius: 50%; background: var(--bg3); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: var(--text2); flex-shrink: 0; }
+  .audio-name { font-size: 13px; font-weight: 500; color: var(--text); }
+  .audio-sub { font-size: 11px; color: var(--text2); }
+
+  /* Recommendation Box */
+  .rec-box { margin: 16px 20px 30px; background: var(--bg2); border: 1px solid rgba(124,111,247,0.3); border-radius: 16px; padding: 16px; }
+  .rec-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .rec-head-text { font-size: 14px; font-weight: 600; color: var(--text); }
+  .rec-item { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+  .rec-score-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .rec-score-badge { padding: 2px 8px; border-radius: 5px; font-size: 10px; font-weight: 600; background: var(--green-bg); color: var(--green); }
+  .rec-plat-badge { padding: 2px 8px; border-radius: 5px; font-size: 10px; font-weight: 600; background: var(--purple-bg); color: var(--purple); }
+  .rec-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+  .rec-reason { font-size: 11px; color: var(--text2); }
+  .rec-btn { width: 100%; padding: 10px; border: 1px solid rgba(124,111,247,0.4); border-radius: 10px; background: var(--purple-bg); color: var(--purple); font-size: 13px; font-weight: 500; cursor: pointer; margin-top: 10px; transition: all 0.15s; font-family: inherit; }
+  .rec-btn:hover { background: rgba(124,111,247,0.2); }
+
+  /* Loading */
+  .loading { display: flex; align-items: center; justify-content: center; padding: 60px 20px; flex-direction: column; gap: 12px; }
+  .loader { width: 32px; height: 32px; border: 2px solid var(--border); border-top-color: var(--purple); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 13px; color: var(--text2); }
+
+  /* Responsive */
+  @media (max-width: 480px) {
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .stat-val { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <div class="logo-text">Trend<span>IQ</span></div>
+    <span class="badge badge-live">● LIVE</span>
+    <span class="badge badge-ig">+ Reels</span>
+  </div>
+  <div class="sync-info">Last sync: <span class="sync-time" id="sync-time">--:--</span></div>
+</div>
+
+<div class="notif" id="notif-bar">
+  <div class="notif-icon">🔔</div>
+  <div>
+    <div class="notif-title" id="notif-title">Data load ho raha hai...</div>
+    <div class="notif-sub" id="notif-sub">Thoda wait karo</div>
+  </div>
+</div>
+
+<div class="filters" id="time-filters">
+  <button class="time-btn" data-time="1hr">1 Hr</button>
+  <button class="time-btn" data-time="5hr">5 Hr</button>
+  <button class="time-btn" data-time="10hr">10 Hr</button>
+  <button class="time-btn active" data-time="1day">1 Din</button>
+  <button class="time-btn" data-time="3day">3 Din</button>
+  <button class="time-btn" data-time="1week">1 Hafte</button>
+</div>
+
+<div class="plat-filters">
+  <button class="plat-btn yt-active" id="btn-yt" data-plat="youtube">▶ YouTube</button>
+  <button class="plat-btn" id="btn-ig" data-plat="instagram">◉ Instagram Reels</button>
+  <button class="plat-btn" id="btn-both" data-plat="both">⚡ Cross-Platform</button>
+</div>
+
+<div class="stats-row">
+  <div class="stat-card"><div class="stat-label" id="lbl1">Topics</div><div class="stat-val" id="s1">—</div></div>
+  <div class="stat-card"><div class="stat-label" id="lbl2">IG Hashtags</div><div class="stat-val" id="s2">—</div></div>
+  <div class="stat-card"><div class="stat-label">Both pe Trend</div><div class="stat-val" id="s3">—</div></div>
+  <div class="stat-card"><div class="stat-label">Total Reach</div><div class="stat-val" id="s4">—</div></div>
+</div>
+
+<div class="cat-filters" id="cat-filters">
+  <button class="cat-btn active" data-cat="all">Sab</button>
+  <button class="cat-btn" data-cat="tech">Tech & AI</button>
+  <button class="cat-btn" data-cat="politics">Politics</button>
+  <button class="cat-btn" data-cat="finance">Finance</button>
+  <button class="cat-btn" data-cat="business">Business</button>
+  <button class="cat-btn" data-cat="startups">Startups</button>
+  <button class="cat-btn" data-cat="incidents">Incidents & Geo</button>
+</div>
+
+<div id="main-content">
+  <div class="loading">
+    <div class="loader"></div>
+    <div class="loading-text">Trends load ho rahi hain...</div>
+  </div>
+</div>
+
+<div id="audio-section" style="display:none;">
+  <div class="section-head">Trending Audio on Reels</div>
+  <div id="audio-list"></div>
+</div>
+
+<div class="rec-box">
+  <div class="rec-head">
+    <span style="font-size:18px;">🤖</span>
+    <span class="rec-head-text">AI Recommendation — Aaj Ye Video Banao</span>
+  </div>
+  <div id="rec-content">
+    <div class="loading"><div class="loader"></div></div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG — Yahan apni keys daalo ──
+const SUPABASE_URL = 'APNI_SUPABASE_URL_YAHAN';
+const SUPABASE_KEY = 'APNI_SUPABASE_ANON_KEY_YAHAN';
+
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const CAT_CLASS = {
+  tech: 'chip-cat-tech', finance: 'chip-cat-finance',
+  politics: 'chip-cat-politics', incidents: 'chip-cat-incidents',
+  business: 'chip-cat-business', startups: 'chip-cat-startups'
+};
+const CAT_LABEL = {
+  tech:'Tech & AI', finance:'Finance', politics:'Politics',
+  incidents:'Incidents & Geo', business:'Business', startups:'Startups'
+};
+const FACT_CLASS = { verified:'chip-verified', partial:'chip-partial', misleading:'chip-misleading' };
+const FACT_ICON  = { verified:'✓ Verified', partial:'~ Partial', misleading:'✗ Misleading' };
+
+let allTopics = [], allRecs = [], allAudios = [], statsData = {};
+let currentPlat = 'youtube', currentCat = 'all';
+
+async function loadData() {
+  const { data, error } = await db
+    .from('trendiq_data')
+    .select('*')
+    .order('fetched_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error || !data) {
+    document.getElementById('main-content').innerHTML =
+      '<div class="loading"><div class="loading-text">Data nahi mila. Pehle Python script run karo.</div></div>';
+    return;
+  }
+
+  allTopics = data.topics || [];
+  allRecs    = data.recommendations || [];
+  allAudios  = data.trending_audios || [];
+  statsData  = data.stats || {};
+
+  const syncDate = new Date(data.fetched_at);
+  document.getElementById('sync-time').textContent =
+    syncDate.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
+
+  updateNotif();
+  renderStats();
+  renderTopics();
+  renderRecs();
+  renderAudios();
+}
+
+function updateNotif() {
+  const top = allRecs[0];
+  if (top) {
+    document.getElementById('notif-title').textContent = 'Aaj ki Recommendation ready hai!';
+    document.getElementById('notif-sub').textContent = top.title + ' — Score ' + top.score;
+  }
+}
+
+function renderStats() {
+  const cross = allTopics.filter(t => t.cross_platform).length;
+  document.getElementById('s1').textContent = statsData.total_topics || allTopics.length;
+  document.getElementById('s2').textContent = allTopics.length;
+  document.getElementById('s3').textContent = cross;
+  document.getElementById('s4').textContent = statsData.total_views || '—';
+}
+
+function renderTopics() {
+  let topics = allTopics.slice();
+  if (currentCat !== 'all') topics = topics.filter(t => t.category === currentCat);
+  if (currentPlat === 'youtube') topics.sort((a,b) => (b.yt_score||0) - (a.yt_score||0));
+  else topics.sort((a,b) => (b.ig_score||0) - (a.ig_score||0));
+
+  const isYT = currentPlat === 'youtube' || currentPlat === 'both';
+  const isIG = currentPlat === 'instagram' || currentPlat === 'both';
+
+  const html = topics.map((t, i) => {
+    const cat = t.category || 'tech';
+    const fact = t.fact_status || 'partial';
+    const ytS = t.yt_score || 0;
+    const igS = t.ig_score || 0;
+    const ytColor = ytS >= 80 ? '#f87171' : ytS >= 60 ? '#fbbf24' : '#5a5a72';
+    const igColor = igS >= 80 ? '#7c6ff7' : igS >= 60 ? '#4ade80' : '#5a5a72';
+    const crossBadge = t.cross_platform ? '<span class="chip chip-cross">⚡ Both pe</span>' : '';
+    return `<div class="topic-card">
+      <div class="topic-top">
+        <div class="rank ${i < 3 ? 'top3' : ''}">${String(i+1).padStart(2,'0')}</div>
+        <div class="topic-body">
+          <div class="topic-title">${t.title}</div>
+          <div class="topic-badges">
+            <span class="chip ${CAT_CLASS[cat]}">${CAT_LABEL[cat]||cat}</span>
+            <span class="chip ${FACT_CLASS[fact]}">${FACT_ICON[fact]||fact}</span>
+            ${crossBadge}
+          </div>
+          ${isYT && ytS ? `<div class="bar-row">
+            <span class="bar-label">▶ YouTube</span>
+            <div class="bar-track"><div class="bar-fill" style="width:${ytS}%;background:${ytColor};"></div></div>
+            <span class="bar-score">${ytS}</span>
+            <span class="bar-meta">${t.youtube_videos||''} videos</span>
+          </div>` : ''}
+          ${isIG && igS ? `<div class="bar-row">
+            <span class="bar-label">◉ Reels</span>
+            <div class="bar-track"><div class="bar-fill" style="width:${igS}%;background:${igColor};"></div></div>
+            <span class="bar-score">${igS}</span>
+            <span class="bar-meta">${t.ig_hashtag||''} · ${t.ig_reels||0} reels</span>
+          </div>` : ''}
+          <div class="topic-since">${t.since||''} trending · Sources: ${t.sources||'—'}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('main-content').innerHTML =
+    '<div class="topic-list">' + (html || '<div class="loading"><div class="loading-text">Is category mein koi topic nahi.</div></div>') + '</div>';
+}
+
+function renderRecs() {
+  const html = allRecs.map((r, i) => `
+    <div class="rec-item">
+      <div class="rec-score-row">
+        <span class="rec-score-badge">#${i+1} · Score ${r.score}</span>
+        ${r.platform === 'both' ? '<span class="rec-plat-badge">⚡ Cross-Platform</span>' : ''}
+      </div>
+      <div class="rec-title">${r.title}</div>
+      <div class="rec-reason">${r.reason}</div>
+    </div>`).join('');
+  document.getElementById('rec-content').innerHTML = html ||
+    '<div class="rec-reason">Data load nahi hua. Script run karo.</div>';
+}
+
+function renderAudios() {
+  if (!allAudios.length || currentPlat === 'youtube') {
+    document.getElementById('audio-section').style.display = 'none';
+    return;
+  }
+  document.getElementById('audio-section').style.display = 'block';
+  document.getElementById('audio-list').innerHTML = allAudios.map((a, i) => `
+    <div class="audio-card">
+      <div class="audio-rank">${i+1}</div>
+      <div>
+        <div class="audio-name">${a.name}</div>
+        <div class="audio-sub">${a.usage} · ${a.match}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ── Event Listeners ──
+document.getElementById('time-filters').addEventListener('click', e => {
+  const btn = e.target.closest('[data-time]');
+  if (!btn) return;
+  document.querySelectorAll('[data-time]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTopics();
+});
+
+document.querySelectorAll('[data-plat]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    currentPlat = btn.dataset.plat;
+    document.getElementById('btn-yt').className   = 'plat-btn';
+    document.getElementById('btn-ig').className   = 'plat-btn';
+    document.getElementById('btn-both').className = 'plat-btn';
+    if (currentPlat === 'youtube')   document.getElementById('btn-yt').className   = 'plat-btn yt-active';
+    if (currentPlat === 'instagram') document.getElementById('btn-ig').className   = 'plat-btn ig-active';
+    if (currentPlat === 'both')      document.getElementById('btn-both').className = 'plat-btn both-active';
+    renderTopics(); renderAudios();
+  });
+});
+
+document.getElementById('cat-filters').addEventListener('click', e => {
+  const btn = e.target.closest('[data-cat]');
+  if (!btn) return;
+  currentCat = btn.dataset.cat;
+  document.querySelectorAll('[data-cat]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTopics();
+});
+
+// ── Start ──
+loadData();
+setInterval(loadData, 5 * 60 * 1000); // har 5 min mein refresh
+</script>
+</body>
+</html>
